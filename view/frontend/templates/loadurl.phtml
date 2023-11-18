@@ -1,0 +1,678 @@
+<?php
+$selectedProductId = $this->getRequest()->getParam("selectedproductid");
+$currentParentProductId = $this->getRequest()->getParam("currentproductid");
+$productType = $this->getRequest()->getParam("prdoducttype");
+$shipDataHelper = $this->helper("Bnaia\Ship\Helper\Data");
+$shippingblock = $this->helper("Bnaia\VendorsPriceComparison\Helper\Data");
+$shipHelper = $this->helper("Bnaia\Ship\Helper\Ship");
+$Shippingrate = $this->helper("ShopForBuild\ShippingService\Helper\Helper");
+$_product = $block->getProduct();
+$cityHelper = $this->helper("Bnaia\Location\Helper\Data");
+$writer = new \Zend_Log_Writer_Stream(BP . "/var/log/beforePrepareProductCollection.log");
+$logger = new \Zend_Log();
+$logger->addWriter($writer);
+$customerId=$block->getCustomerId();
+?>
+
+<div id="row-bnaia-configurable-loadurl" class="row-bnaia-configurable-loadurl">
+
+    <?php if (
+        isset($selectedProductId) &&
+        $selectedProductId !== "undefined"
+    ) { ?>
+
+        <?php
+        $selectedProductSku = $block->getProductSkuById($selectedProductId);
+        $clientCityId = $shipHelper->getCityId($customerId);
+        $clientAreaId = $shipHelper->getAreaIdByCityId($clientCityId);
+        $clientAreaCode = $shipHelper->getAreaCodeByCityId($clientCityId);
+        $superAttributeByChild = $block->getChildSuperAttribute(
+            $block->getProductSkuById($currentParentProductId),
+            $block->getProductSkuById($selectedProductId)
+        );
+        foreach ($superAttributeByChild as $key => $values) {
+            $cuurentSupperAttribute = $values;
+            $preSelect = $key . "=" . $values;
+        }
+        // get other product from select
+        $products = $block->getConfigurableProductsForPriceComparison(
+            $currentParentProductId
+        );
+        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+        $configproduct = $objectManager->create('Magento\Catalog\Model\Product')->load($currentParentProductId);
+        if ($configproduct->getEntityId() == $currentParentProductId) {
+            $productSku = $configproduct->getSku();
+            $vendorId = $configproduct->getVendorId();
+            $vendor = $block->getVendorById($configproduct->getVendorId());
+            $IsSourceAvailable=$block->getSourceAdress($vendor->getCompany(),$clientAreaCode);
+            $cityId = $shipHelper->getCityId($customerId);
+            $areaId = $shipHelper->getAreaIdByCityId($cityId);
+            $destAreaCode = $shipHelper->getAreaCodeByAreaId($areaId);
+            $stockID = 100;
+            $sourceItemCodeBySku = $shipHelper->getSourceCodeBySkuBasedOnAvailabilty(
+                $selectedProductSku,
+                $destAreaCode
+            );
+            $sourceCityId = $shipHelper->getSourceCity(
+                $stockID,
+                $sourceItemCodeBySku
+            );
+            $originAreaId = $shipHelper->getAreaIdByCityId($sourceCityId);
+            $areaCode = $shipHelper->getAreaCodeByCityId($sourceCityId);
+            $shippingService = $configproduct->getShippingService();
+            // $writer = new \Zend_Log_Writer_Stream(BP . "/var/log/shippingServiceDebug.log");
+            // $logger = new \Zend_Log();
+            // $logger->addWriter($writer);
+            // $logger->info(json_encode($configproduct->getData()));
+            // $logger->info(json_encode($shippingService));
+            $volumetricWeight = $shipHelper->getvolumetricWeightBySku(
+                $selectedProductSku
+            );
+            $total = $volumetricWeight;
+        }
+        // Start Available method for selected product
+        foreach ($products as $product) {
+            $Shippingrate->getProduct($product, $selectedProductId);
+            if ($product->getEntityId() == $currentParentProductId) {
+                $productSku = $product->getSku();
+                $vendorId = $product->getVendorId();
+                $vendor = $block->getVendorById($product->getVendorId());
+                $IsSourceAvailable=$block->getSourceAdress($vendor->getCompany(),$clientAreaCode);
+                $cityId = $shipHelper->getCityId($customerId);
+                $areaId = $shipHelper->getAreaIdByCityId($cityId);
+                $destAreaCode = $shipHelper->getAreaCodeByAreaId($areaId);
+                $stockID = 100;
+                $sourceItemCodeBySku = $shipHelper->getSourceCodeBySkuBasedOnAvailabilty(
+                    $selectedProductSku,
+                    $destAreaCode
+                );
+                $sourceCityId = $shipHelper->getSourceCity(
+                    $stockID,
+                    $sourceItemCodeBySku
+                );
+                $originAreaId = $shipHelper->getAreaIdByCityId($sourceCityId);
+                $areaCode = $shipHelper->getAreaCodeByCityId($sourceCityId);
+                $shippingService = $product->getShippingService();
+                $volumetricWeight = $shipHelper->getvolumetricWeightBySku(
+                    $selectedProductSku
+                );
+                $total = $volumetricWeight;
+            }
+        }
+        if (isset($vendorId) && $vendorId > 0) {
+
+            $vendor = $block->getVendorById($vendorId);
+            $IsSourceAvailable=$block->getSourceAdress($vendor->getCompany(),$clientAreaCode);
+            $vendorCountryId = $vendor->getCountryId();
+            $vendorRegionId = $vendor->getRegionId();
+            $vendorCityId = $block->getCityIdByCityName($vendor->getCity());
+
+            $clientCityId = $shipHelper->getCityId($customerId);
+            $clientAreaId = $shipHelper->getAreaIdByCityId($clientCityId);
+            $clientAreaCode = $shipHelper->getAreaCodeByCityId($clientCityId);
+            ?>
+        <?php if($configproduct->getMpGridview()!=1):?>
+            <div class="vendor-info-title-shipping col-sm-24">
+                <h3><?= $shippingblock->getshippingestimateText() ?> </h3>
+            </div>
+       <?php endif?>
+            <?php
+            echo "<br>";
+            //new
+            $shippingService = $configproduct->getShippingService();
+            $preparecollection = $block
+                ->getBnaiaTableRate()
+                ->addFieldToFilter("dest_area_id", $clientAreaCode)
+                ->addFieldToFilter("origin_area_id", $areaCode)
+                ->addFieldToFilter("service_id", $shippingService);
+            $conditionValueFromArray = [];
+            $conditionValueToArray = [];
+            foreach ($preparecollection as $prepare) {
+                $conditionValueFromArray[] = $prepare->getConditionValueFrom();
+                $conditionValueToArray[] = $prepare->getConditionValueTo();
+            }
+            if (!empty($conditionValueFromArray)) {
+                $minFrom = min($conditionValueFromArray);
+                $maxFrom = max($conditionValueFromArray);
+                $minTo = min($conditionValueToArray);
+                $maxTo = max($conditionValueToArray);
+            }
+            $rateIdsArray = [];
+            foreach ($preparecollection as $prepare) {
+                $conditionValueFrom = $prepare->getConditionValueFrom();
+                $conditionValueTo = $prepare->getConditionValueTo();
+                if (
+                    $conditionValueFrom <= $total &&
+                    $total <= $conditionValueTo
+                ) {
+                    $rateId = $prepare->getRateId();
+                    $rateIdsArray[] = $prepare->getRateId();
+                }
+                if ($maxTo == $conditionValueTo && $total > $maxTo) {
+                    $rateId = $prepare->getRateId();
+                    $rateIdsArray[] = $prepare->getRateId();
+                }
+            }
+
+            $collection = $block
+                ->getBnaiaTableRate()
+                ->addFieldToFilter("dest_area_id", $clientAreaCode)
+                ->addFieldToFilter("origin_area_id", $areaCode)
+                ->addFieldToFilter("service_id", $shippingService)
+                ->addFieldToFilter('condition_value_from', ['lteq' => $volumetricWeight])
+                ->addFieldToFilter('condition_value_to', ['gteq' => $volumetricWeight]);
+
+            $logger->info(
+                "collection config " . $collection->getSelect()->__toString()
+            );
+
+            if (!empty($rateIdsArray)) {
+                $collection->addFieldToFilter("rate_id", $rateIdsArray);
+            } else {
+                $collection->addFieldToFilter("rate_id", 0);
+            }
+
+            foreach ($collection as $rate) { ?>
+                <div class="vendor-info-content ">
+                <div id="row-bnaia" class="row-bnaia">
+         <?php if($configproduct->getMpGridview()!=1):?>
+                <div class="col-md-12 rate-compare" id="price-compare">
+                    <input type="hidden" value=<?= $rate[
+                    "price"
+                    ] ?> id="shipping-min-amount">
+                    <input type="hidden" value=<?= $rate["vol_price"] *
+                    $volumetricWeight ?> id="shipping-cost-val">
+                    <?php if (
+                        $rate["price"] >
+                        $rate["vol_price"] * $volumetricWeight
+                    ): ?>
+                        <a><?= floatval($rate["price"]) .
+                            " " .
+                            __("EGP") ?></a>
+                    <?php else: ?>
+                        <a><?= $rate["vol_price"] * $volumetricWeight .
+                            " " .
+                            __("EGP") ?></a>
+                    <?php endif; ?>
+                </div>
+                <div class="col-md-12 rate-compare">
+                    <a><?= $rate["delivery_type"] ?></a>
+                </div>
+                <div class="delivery-time">
+                    <a><?= __("deliver to you from") .
+                        " " .
+                        $rate["delivery_from"] .
+                        " " .
+                        __("to") .
+                        " " .
+                        $rate["delivery_to"] .
+                        " " .
+                        __("Days") ?></a>
+                </div>
+
+
+                <div class="shipping-err-qty-msg">
+                    <?php echo $shippingblock->getQuantityText(); ?>
+                </div>
+                <div class="dotted-line"></div>
+                 <?php endif?>
+            <?php }
+           
+            ?>
+            <input type="hidden" id="prod-size-collection" value=<?= sizeof(
+                $collection
+            ) ?>>
+
+            <?php if (sizeof($collection) == 0): ?>
+                <div class="shipping-err-msg">
+                    <?php echo $shippingblock->getNotShippingAvailableText(); ?>
+                </div>
+                <div class="dotted-line"></div>
+            <?php endif; ?>
+            <?php
+        }else{?>
+            <div class="shipping-err-msg">
+                <?php echo __("No Available vendors") ?>
+            </div>
+            <?php
+
+        }
+
+        // End Available method for selected product
+        ?>
+
+        <input type="hidden" id="prod-size" value=<?= $products->getSize() ?>>
+        <?php if ($products->getSize() > 1 ) { ?>
+
+            <?php foreach ($products as $product) {
+                if (
+                    $product->getEntityId() !== $currentParentProductId
+                ) {
+                    $comparisonParentProductId = $product->getEntityId();
+                    $childrenIdByParent = $block->getChildrenIds(
+                        $comparisonParentProductId
+                    );
+                    foreach ($childrenIdByParent as $childs) {
+                        foreach ($childs as $childId) {
+                            //echo $childId;
+
+                            $comparisonsuperAttributeByChild = $block->getChildSuperAttribute(
+                                $block->getProductSkuById(
+                                    $comparisonParentProductId
+                                ),
+                                $block->getProductSkuById($childId)
+                            );
+                            foreach (
+                                $comparisonsuperAttributeByChild
+                                as $values
+                            ) {
+                                if (
+                                    $cuurentSupperAttribute == $values
+                                ) {
+
+                                    $acceptedProduct = $block->getProductById(
+                                        $childId
+                                    );
+
+                                    $vendor = $block->getVendorById(
+                                        $acceptedProduct->getVendorId()
+                                    );
+                                    $IsSourceAvailable=$block->getSourceAdress($vendor->getCompany(),$clientAreaCode);
+                                    $childPrice = "";
+                                    if (
+                                        $acceptedProduct[
+                                        "special_price"
+                                        ] != null
+                                    ) {
+                                        $childPrice =
+                                            (int) $acceptedProduct[
+                                            "special_price"
+                                            ];
+                                    } else {
+                                        $childPrice =
+                                            (int) $acceptedProduct[
+                                            "price"
+                                            ];
+                                    }
+                                    ?>
+                                    <?php if($IsSourceAvailable=="1" && sizeof($collection) >0):?>
+                                        <div class="vendor-info-title-shipping ">
+                                            <h3><?= $shippingblock->getSoldSellerTitle() ?> </h3>
+                                        </div>
+                                        <div class="seller-border-sec">
+                                            <div class="compare seller-button-sec">
+
+                                                <a class="price-seller-sec" href="<?= $product->getProductUrl() .
+                                                "#" .
+                                                $preSelect ?>">
+                                                <?php if($configproduct->getMpGridview()!=1):?>
+                                                    <h3><?= $childPrice .
+                                                        " " .
+                                                        __("EGP") ?></h3>
+                                                </a>
+                                                 <?php endif?>
+                                                <a class="but-seller" href="<?= $product->getProductUrl() .
+                                                "#" .
+                                                $preSelect ?>">
+                                                    <button class="seller-but"><?php echo __(
+                                                            "Show Product"
+                                                        ); ?></button>
+                                                </a>
+                                            </div>
+                                            <div class="vendor-info-content-solde-by">
+                                                <div id="row-bnaia" class="row-bnaia">
+
+                                                    <div class="sold-compare rating-summary">
+                                                        <div class="col-md-8 sellers-title">
+                                                            <a class="price-seller-sec"><?php echo $shippingblock->getSoldSellerText(); ?> </a>
+
+                                                        </div>
+                                                        <div class="col-md-6 sold-compare">
+
+                                                            <a href="<?= $product->getProductUrl() .
+                                                            "#" .
+                                                            $preSelect ?>">
+                                                                <div class="soldpart-name"><?= $vendor->getCompany() ?></div>
+                                                            </a>
+                                                        </div>
+                                                        <div title="<?php echo $block->getRatingByVendorId(
+                                                            $acceptedProduct->getVendorId()
+                                                        ); ?>%" class="rating-result soldsec">
+
+                                                                <span style="width:<?php echo $block->getRatingByVendorId(
+                                                                    $acceptedProduct->getVendorId()
+                                                                ); ?>%"><span><?php echo $block->getRatingByVendorId(
+                                                                            $acceptedProduct->getVendorId()
+                                                                        ); ?>%</span></span>
+                                                            <div class="col-md-8 sold-compare">
+                                                                <a href="<?= $product->getProductUrl() .
+                                                                "#" .
+                                                                $preSelect ?>"><?= $vendor->getCity() ?></a>
+                                                            </div>
+
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endif?>
+                                    </div>
+                                    </div>
+                                    <?php
+                                }
+                            }
+                        }
+                    }
+                }
+            }}} elseif ($productType == "simple") { ?>
+
+
+
+        <?php
+        /**
+        * Product type simple
+        */
+
+        $selectedProductId = $currentParentProductId;
+        $selectedProductSku = $block->getProductSkuById($selectedProductId);
+        $clientCityId = $shipHelper->getCityId($customerId);
+        $clientAreaId = $shipHelper->getAreaIdByCityId($clientCityId);
+        $clientAreaCode = $shipHelper->getAreaCodeByCityId($clientCityId);
+        // get other product from select
+
+        $products = $block->getConfigurableProductsForPriceComparison(
+            $currentParentProductId
+        );
+        $objectManager = \Magento\Framework\App\ObjectManager::getInstance();
+        $simpleproduct = $objectManager->create('Magento\Catalog\Model\Product')->load($selectedProductId);
+        $Shippingrate->getProduct($simpleproduct, $selectedProductId);
+        
+
+        $productSku = $simpleproduct->getSku();
+        $vendorId = $simpleproduct->getVendorId();
+        $vendor = $block->getVendorById($simpleproduct->getVendorId());
+        $cityId = $shipHelper->getCityId($customerId);
+        $areaId = $shipHelper->getAreaIdByCityId($cityId);
+        $destAreaCode = $shipHelper->getAreaCodeByAreaId($areaId);
+        $stockID = 100;
+        $sourceItemCodeBySku = $shipHelper->getSourceCodeBySkuBasedOnAvailabilty(
+            $selectedProductSku,
+            $destAreaCode
+        );
+        $sourceCityId = $shipHelper->getSourceCity(
+            $stockID,
+            $sourceItemCodeBySku
+        );
+        $originAreaId = $shipHelper->getAreaIdByCityId($sourceCityId);
+        $areaCode = $shipHelper->getAreaCodeByCityId($sourceCityId);
+        $shippingService = $simpleproduct->getShippingService();
+        // $shippingService = $configproduct->getShippingService();
+        $writer = new \Zend_Log_Writer_Stream(BP . "/var/log/shippingServiceDebug.log");
+        $logger = new \Zend_Log();
+        $logger->addWriter($writer);
+        $logger->info(json_encode($simpleproduct->getData()));
+        $logger->info(json_encode($shippingService));
+        $volumetricWeight = $shipHelper->getvolumetricWeightBySku(
+            $selectedProductSku
+        );
+        $total = $volumetricWeight;
+
+// Start Available method for selected product
+
+        foreach ($products as $product) {
+            $Shippingrate->getProduct($product, $selectedProductId);
+            if ($product->getEntityId() == $currentParentProductId) {
+                $productSku = $product->getSku();
+                $vendorId = $product->getVendorId();
+                $vendor = $block->getVendorById($product->getVendorId());
+                $cityId = $shipHelper->getCityId($customerId);
+                $areaId = $shipHelper->getAreaIdByCityId($cityId);
+                $destAreaCode = $shipHelper->getAreaCodeByAreaId($areaId);
+                $stockID = 100;
+                $sourceItemCodeBySku = $shipHelper->getSourceCodeBySkuBasedOnAvailabilty(
+                    $selectedProductSku,
+                    $destAreaCode
+                );
+                $sourceCityId = $shipHelper->getSourceCity(
+                    $stockID,
+                    $sourceItemCodeBySku
+                );
+                $originAreaId = $shipHelper->getAreaIdByCityId($sourceCityId);
+                $areaCode = $shipHelper->getAreaCodeByCityId($sourceCityId);
+                $shippingService = $product->getShippingService();
+                $volumetricWeight = $shipHelper->getvolumetricWeightBySku(
+                    $selectedProductSku
+                );
+                $total = $volumetricWeight;
+            }
+        }
+
+        if (isset($vendorId) && $vendorId > 0) {
+
+            $vendorCountryId = $vendor->getCountryId();
+            $vendorRegionId = $vendor->getRegionId();
+            $vendorCityId = $block->getCityIdByCityName($vendor->getCity());
+
+            $clientCityId = $shipHelper->getCityId($customerId);
+            $clientAreaId = $shipHelper->getAreaIdByCityId($clientCityId);
+            $clientAreaCode = $shipHelper->getAreaCodeByCityId($clientCityId);
+            ?>
+
+            <div class="vendor-info-title-shipping col-sm-24">
+                <h3><?= $shippingblock->getshippingestimateText() ?> </h3>
+            </div>
+
+            <?php
+            echo "<br>";
+            //new
+
+            $preparecollection = $block
+                ->getBnaiaTableRate()
+                ->addFieldToFilter("dest_area_id", $clientAreaCode)
+                ->addFieldToFilter("origin_area_id", $areaCode)
+                ->addFieldToFilter("service_id", $shippingService);
+            $conditionValueFromArray = [];
+            $conditionValueToArray = [];
+            foreach ($preparecollection as $prepare) {
+                $conditionValueFromArray[] = $prepare->getConditionValueFrom();
+                $conditionValueToArray[] = $prepare->getConditionValueTo();
+            }
+            if (!empty($conditionValueFromArray)) {
+                $minFrom = min($conditionValueFromArray);
+                $maxFrom = max($conditionValueFromArray);
+                $minTo = min($conditionValueToArray);
+                $maxTo = max($conditionValueToArray);
+            }
+            $rateIdsArray = [];
+            foreach ($preparecollection as $prepare) {
+                $conditionValueFrom = $prepare->getConditionValueFrom();
+                $conditionValueTo = $prepare->getConditionValueTo();
+                if ($conditionValueFrom <= $total && $total <= $conditionValueTo) {
+                    $rateId = $prepare->getRateId();
+                    $rateIdsArray[] = $prepare->getRateId();
+                }
+                if ($maxTo == $conditionValueTo && $total > $maxTo) {
+                    $rateId = $prepare->getRateId();
+                    $rateIdsArray[] = $prepare->getRateId();
+                }
+            }
+            $shippingService = $simpleproduct->getShippingService();
+            $logger->info(
+                "shippingService " . $shippingService
+            );
+            $collection = $block
+                ->getBnaiaTableRate()
+                ->addFieldToFilter("dest_area_id", $clientAreaCode)
+                ->addFieldToFilter("origin_area_id", $areaCode)
+                ->addFieldToFilter("service_id", $shippingService)
+                ->addFieldToFilter('condition_value_from', ['lteq' => $volumetricWeight])
+                ->addFieldToFilter('condition_value_to', ['gteq' => $volumetricWeight]);
+            $logger->info(
+                "collection config " . $collection->getSelect()->__toString()
+            );
+            ?>
+            <input type="hidden" id="prod-size" value=<?= $products->getSize() ?>>
+            <input type="hidden" id="prod-size-collection" value=<?= sizeof($collection) ?>>
+            <?php if (sizeof($collection) == 0): ?>
+                <div class="shipping-err-msg">
+                    <input type="hidden" id="prod-collection-size" value=<?= sizeof(
+                        $collection
+                    ) ?>>
+                    <?php echo $shippingblock->getNotShippingAvailableText(); ?>
+                </div>
+            <?php endif; ?>
+            <?php
+            if (!empty($rateIdsArray)) {
+                $collection->addFieldToFilter("rate_id", $rateIdsArray);
+            } else {
+                $collection->addFieldToFilter("rate_id", 0);
+            }
+            foreach ($collection as $rate) { ?>
+                <div class="vendor-info-content ">
+                    <div id="row-bnaia" class="row-bnaia">
+                        <div class="col-md-12 rate-compare" id="price-compare">
+                            <input type="hidden" value=<?= $rate[
+                            "price"
+                            ] ?> id="shipping-min-amount">
+                            <input type="hidden" value=<?= $rate["vol_price"] *
+                            $volumetricWeight ?> id="shipping-cost-val">
+                            <?php if (
+                                $rate["price"] >
+                                $rate["vol_price"] * $volumetricWeight
+                            ): ?>
+                                <a><?= floatval($rate["price"]) . " " . __("EGP") ?></a>
+                            <?php else: ?>
+                                <a><?= $rate["vol_price"] * $volumetricWeight .
+                                    " " .
+                                    __("EGP") ?></a>
+                            <?php endif; ?>
+                        </div>
+                        <div class="col-md-12 rate-compare">
+                            <a><?= $rate["delivery_type"] ?></a>
+                        </div>
+                        <div class="delivery-time">
+                            <a><?= __("deliver to you from") .
+                                " " .
+                                $rate["delivery_from"] .
+                                " " .
+                                __("to") .
+                                " " .
+                                $rate["delivery_to"] .
+                                " " .
+                                __("Days") ?></a>
+                        </div>
+
+
+                        <div class="shipping-err-qty-msg">
+                            <?php echo $shippingblock->getQuantityText(); ?>
+                        </div>
+                        <div class="dotted-line"></div>
+                    </div>
+                </div>
+
+
+            <?php }
+
+        }else{?>
+            <div class="shipping-err-msg">
+                <?php echo __("No Available vendors") ?>
+            </div>
+            <?php
+
+        }
+
+        // End Available method for selected product
+
+        /* sold by other sellers  simple product */
+        ?>
+
+
+        <?php
+        $productsSimple = $block->getSimpleProductForPriceComparison($currentParentProductId);
+        if ($productsSimple != null) {
+            if($productsSimple->getSize() > 1) {
+        ?>
+
+            <div class="vendor-info-title-shipping ">
+                <h3><?= $shippingblock->getSoldSellerTitle() ?> </h3>
+            </div>
+
+            <?php
+            // get other product from select
+            $vendorId = $simpleproduct->getVendorId();
+            $productURL = $simpleproduct->getProductUrl();
+            $productPrice = $simpleproduct->getFinalPrice();
+            $vendor = $block->getVendorById($simpleproduct->getVendorId());
+            $vendorCompany = $vendor->getCompany();
+            $IsSourceAvailable=$block->getSourceAdress($vendorCompany,$clientAreaCode);
+
+            // Get Sold by other Sellers products by current product ID
+
+
+            foreach ($productsSimple as $productSimp) {
+
+                $currentProductId = $productSimp->getId();
+                $acceptedProduct = $block->getProductById($currentProductId);
+                $vendorCity = $vendor->getCity($block->getRatingByVendorId($acceptedProduct->getVendorId()));
+                $productPrice = $productSimp->getFinalPrice();
+                $vendorId = $productSimp->getVendorId();
+                $vendor = $block->getVendorById($productSimp->getVendorId());
+                $vendorCompany = $vendor->getCompany();
+                $writer = new \Zend_Log_Writer_Stream(BP . "/var/log/soldByOtherSellers.log");
+                $logger = new \Zend_Log();
+                $logger->addWriter($writer);
+//            $logger->info("vendor collection" . print_r($vendor , true));
+//                $logger->info("vendor collection" . var_dump($vendorId));
+//                $logger->info("vendor collection");
+
+                if ($productSimp->getEntityId() !== $currentParentProductId) {
+                    $vendorId = $productSimp->getVendorId();
+                    $SelectFromProductId = $productSimp->getSelectFromProductId();
+                    ?>
+                    <?php if($IsSourceAvailable=="1" && sizeof($collection) >0):?>
+                        <div class="seller-border-sec">
+                            <div class="compare seller-button-sec">
+                                <a class="price-seller-sec" href="<?= $productSimp->getProductUrl(); ?>">
+                                    <h3><?= $product->getFinalPrice() . " " . __("EGP") ?></h3>
+                                </a>
+
+                                <a class="but-seller" href="<?= $productSimp->getProductUrl(); ?>">
+                                    <button class="seller-but"><?php echo __(
+                                            "Show Product"
+                                        ); ?></button>
+                                </a>
+
+                            </div>
+                            <div class="vendor-info-content-solde-by">
+                                <div id="row-bnaia" class="row-bnaia">
+
+                                    <div class="sold-compare rating-summary">
+                                        <div class="col-md-8 sellers-title">
+                                            <a class="price-seller-sec"><?php echo $shippingblock->getSoldSellerText(); ?> </a>
+                                        </div>
+                                        <div class="col-md-6 sold-compare">
+                                            <a href="<?= $productSimp->getProductUrl(); ?>">
+                                                <div class="soldpart-name"><?= $vendorCompany ?></div>
+                                            </a>
+                                        </div>
+                                        <div title="<?php echo $block->getRatingByVendorId($productSimp->getVendorId()); ?>%" class="rating-result soldsec">
+                                            <span style="width:<?php echo $block->getRatingByVendorId($product->getVendorId()); ?>%"><span><?= $block->getRatingByVendorId($productSimp->getVendorId()); ?>%</span></span>
+                                            <div class="col-md-8 sold-compare">
+                                                <a href="<?= $productSimp->getProductUrl(); ?>"><?= $vendorCity ?></a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif?>
+                    <?php  ?>
+                    <?php
+                }
+            }
+
+        }}} else { ?>
+        <div class="message-select"><?= "Please select options to show shipping methods and compare pricing" ?></div>
+    <?php } ?>
+</div>

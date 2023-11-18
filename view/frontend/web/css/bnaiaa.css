@@ -1,0 +1,101 @@
+.shipping-err-msg {
+     color: #c70032;
+     margin-right:5px;
+}
+.vendor-info-content {
+    margin-left: 10px;
+    margin-right: 10px;
+}
+.vendor-info-title.shipping.col-sm-24{
+    padding-left: 0px;
+}
+
+.vendor-info-title-shipping {
+    margin-top: 10px;
+    color: #414b56 !important;
+}
+.vendor-info-title{
+    margin-left: 10px;
+    margin-right: 10px;
+}
+#price-compare a {
+    color: #c70032;
+    font-size: 15px;
+}
+.delivery-time {
+    display: inline-block;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+.sellers-title h3{
+    font: 400  18px/1.35 Cairo, sans-serif;
+    margin: 0 0 10px;
+    color: #414b56 !important;
+}
+.shipping-err-qty-msg{
+    color:#c70032;
+    margin-bottom: 10px;
+}
+
+.seller-button {
+    margin-right: 10px;
+    margin-left: 10px;
+    margin-top: 20px;
+    padding-top: 20px;
+}
+.dotted-line {
+    color: #e9eaec;
+    border-style: 1px dashed #e9eaec;
+     padding-bottom: 15px;
+    margin-bottom: 10px;
+    border-bottom: 1px dashed #e9eaec;
+}
+.compare.seller-button-sec{
+    display: inline-flex;
+    margin-top:10px;
+}
+.compare.seller-button-sec h3{
+    color: #c70032;
+    margin-left: 5px;    
+    margin-right: 6px;
+}
+.sold-compare.rating-summary {
+    margin-top: 20px;
+    margin-bottom: 10px
+}
+a.price-seller-sec{
+    margin-right: 5px;
+    margin-left: 10px;
+}
+.seller-border-sec {
+ 
+    border: 1px solid #e9eaec;
+
+}
+.rating-result.soldsec {
+    margin-right: 10px;
+    width: auto;
+    margin-left: 10px !important;
+}
+.soldpart-name {
+    font-weight: bold;
+}
+
+a.but-seller {
+    width: 50%;
+    height: 50%;
+}
+button.seller-but {
+    text-transform: lowercase;
+    -webkit-writing-mode: horizontal-tb !important;
+    -webkit-appearance: button;
+    border-style: solid;
+    border-width: 1px;
+    padding: 1px 7px 2px;
+    text-rendering: auto;
+    margin: 0em;
+    font-size: 13px;
+    height: max-content;
+    width: max-content;
+    margin-right: 20px;
+}

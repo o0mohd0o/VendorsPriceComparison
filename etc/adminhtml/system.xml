@@ -1,0 +1,38 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <tab id="estimate_shipping" translate="label" sortOrder="10">
+            <label>Estimate Shipping Block Format</label>
+        </tab>
+        <section id="block" translate="label" sortOrder="130" showInDefault="1" showInWebsite="1" showInStore="1">
+            <class>separator-top</class>
+            <label>setting</label>
+            <tab>estimate_shipping</tab>
+            <resource>Bnaia_VendorsPriceComparison::vendorspricecomparison_config</resource>
+            <group id="general" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Main title</label>
+                <field id="main_title" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Main Title Text</label>
+                </field>
+                <field id="ship_title" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Shipping Title Text</label>
+                </field>
+                <field id="sold_sellers_title" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Sold Sellers Title</label>
+                </field>
+                <field id="sellers_title" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Sold Sellers Text</label>
+                </field>
+                <field id="changed_quantity" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Changed Quantity Text</label>
+                </field>
+                <field id="shipping_rate" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>No Shipping Rate Message</label>
+                </field>
+                 <field id="config_text" translate="label" type="text" sortOrder="1" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Configurable Text</label>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>
